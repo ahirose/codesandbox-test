@@ -1,113 +1,146 @@
-// /**
-//  *
-//  *
-//  */
+// PWA時計アプリケーション
 
-// var val1 = "aaa";
+// Service Worker登録
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+                console.log('Service Worker registered:', registration);
+            })
+            .catch(error => {
+                console.log('Service Worker registration failed:', error);
+            });
+    });
+}
 
-// let val2 = "bbb";
+// DOM要素の取得
+const timeElement = document.getElementById('time');
+const dateElement = document.getElementById('date');
+const dayElement = document.getElementById('day');
+const analogClock = document.getElementById('analogClock');
+const digitalClock = document.querySelector('.digital-clock');
+const toggleBtn = document.getElementById('toggleBtn');
+const hourHand = document.getElementById('hourHand');
+const minuteHand = document.getElementById('minuteHand');
+const secondHand = document.getElementById('secondHand');
 
-// val1 = "ccc";
-// val2 = "ddd";
+// 曜日の日本語配列
+const days = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
 
-// var val1 = "aaa";
-// //let val2="bbb";
+// 表示モード（デジタル: false, アナログ: true）
+let isAnalogMode = false;
 
-// console.log(val1);
-// console.log(val2);
+// 数字を2桁にフォーマット
+const formatNumber = (num) => num.toString().padStart(2, '0');
 
-// const val4 = {
-//   name: "aaa",
-//   age: 222
-// };
+// デジタル時計の更新
+const updateDigitalClock = () => {
+    const now = new Date();
 
-// val4.age = 111;
-// val4.aaa = "123";
-// console.log(val4);
+    const hours = formatNumber(now.getHours());
+    const minutes = formatNumber(now.getMinutes());
+    const seconds = formatNumber(now.getSeconds());
 
-// const val5 = ["dog", "bird"];
-// val5.push("cat");
-// console.log(val5);
+    timeElement.textContent = `${hours}:${minutes}:${seconds}`;
 
-// //template
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const date = now.getDate();
 
-// const name = "oreore";
-// const age = 111;
-// const message1 = "my name is " + name + ", my age is " + age;
-// console.log(message1);
+    dateElement.textContent = `${year}年${month}月${date}日`;
+    dayElement.textContent = days[now.getDay()];
+};
 
-// const message2 = `myname is ${name}, age is ${age}`;
-// console.log(message2);
+// アナログ時計の更新
+const updateAnalogClock = () => {
+    const now = new Date();
 
-// //arrow
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    const milliseconds = now.getMilliseconds();
 
-// function func1(str) {
-//   return str;
-// }
+    // 秒針（スムーズな動き）
+    const secondDegrees = ((seconds + milliseconds / 1000) / 60) * 360;
+    secondHand.style.transform = `rotate(${secondDegrees}deg)`;
 
-// console.log(func1("1123"));
+    // 分針（スムーズな動き）
+    const minuteDegrees = ((minutes + seconds / 60) / 60) * 360;
+    minuteHand.style.transform = `rotate(${minuteDegrees}deg)`;
 
-// const func2 = function (str) {
-//   return str;
-// };
+    // 時針（スムーズな動き）
+    const hourDegrees = ((hours % 12 + minutes / 60) / 12) * 360;
+    hourHand.style.transform = `rotate(${hourDegrees}deg)`;
+};
 
-// const func3 = (str) => str;
+// 時計の初期化と更新
+const initializeClock = () => {
+    // 初期表示
+    updateDigitalClock();
+    updateAnalogClock();
 
-// console.log(func3(12334343));
+    // アニメーション用のクラス追加（初期描画後）
+    setTimeout(() => {
+        hourHand.classList.add('initialized');
+        minuteHand.classList.add('initialized');
+        secondHand.classList.add('initialized');
+    }, 100);
 
-// const func4 = (a, b) => a + b;
+    // 毎フレーム更新（アナログ時計のスムーズな動きのため）
+    const updateClock = () => {
+        if (isAnalogMode) {
+            updateAnalogClock();
+        } else {
+            updateDigitalClock();
+        }
+        requestAnimationFrame(updateClock);
+    };
 
-// console.log(func4(1, 2));
+    requestAnimationFrame(updateClock);
+};
 
-// //sepalated parameter
+// 表示切り替え
+const toggleClockMode = () => {
+    isAnalogMode = !isAnalogMode;
 
-// const myProfile2 = {
-//   name2: "あああああ",
-//   age2: 1113
-// };
+    if (isAnalogMode) {
+        digitalClock.classList.add('hidden');
+        analogClock.classList.add('active');
+        toggleBtn.textContent = 'デジタル表示に切替';
+    } else {
+        digitalClock.classList.remove('hidden');
+        analogClock.classList.remove('active');
+        toggleBtn.textContent = 'アナログ表示に切替';
+    }
+};
 
-// const { age2, name2 } = myProfile2;
+// イベントリスナー
+toggleBtn.addEventListener('click', toggleClockMode);
 
-// const message3 = `name2 is ${name2}, age2 is ${age2}`;
+// スリープ復帰時の対応
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        updateDigitalClock();
+        updateAnalogClock();
+    }
+});
 
-// console.log(message3);
+// アプリケーション起動
+initializeClock();
 
-// const myProfile3 = ["NNAAMME", 123];
+// インストール可能性の検出
+let deferredPrompt;
 
-// const [name3, age3] = myProfile3;
+window.addEventListener('beforeinstallprompt', (e) => {
+    // デフォルトのインストールプロンプトを防止
+    e.preventDefault();
+    // 後で使用するためにイベントを保存
+    deferredPrompt = e;
+    console.log('PWAインストール可能');
+});
 
-// const message4 = `name is ${name3}, age is ${age3}`;
-
-// console.log(message4);
-
-//spread
-
-//array
-// const arr1 = [100, 2];
-// console.log(...arr1);
-
-// const sumFunc = (n1, n2) => console.log(n1 + n2);
-
-// sumFunc(...arr1);
-
-// gathering
-
-// const arr2 = [1, 2, 3, 4, 5];
-
-// const [n1, n2, ...arr3] = arr2;
-
-// //copy array
-// const [...arr4] = arr2;
-// const arr5 = [...arr2];
-// const arr6 = arr2; //deep copy
-// const arr7 = [...arr2,...arr3];
-// const arr8=arr2+arr3; //act as string
-
-// arr6[0]=999;
-// console.log("-----");
-// console.log(arr2);
-// console.log(arr4);
-// console.log(arr5);
-// console.log(arr6);
-// console.log(arr7);
-// console.log(arr8);
+// インストール後の処理
+window.addEventListener('appinstalled', () => {
+    console.log('PWAがインストールされました');
+    deferredPrompt = null;
+});
