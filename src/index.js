@@ -30,8 +30,75 @@ const days = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '
 // 表示モード（デジタル: false, アナログ: true）
 let isAnalogMode = false;
 
+// 前回の秒数を記録（エフェクト発動用）
+let lastSecond = -1;
+
 // 数字を2桁にフォーマット
 const formatNumber = (num) => num.toString().padStart(2, '0');
+
+// 派手なエフェクトを発動
+const triggerEffect = () => {
+    // 時刻表示のパルスとグローエフェクト
+    timeElement.classList.add('effect-active');
+    setTimeout(() => timeElement.classList.remove('effect-active'), 500);
+
+    // 時計全体の波紋エフェクト
+    const clockWrapper = document.querySelector('.clock-wrapper');
+    clockWrapper.classList.add('effect-active');
+    setTimeout(() => clockWrapper.classList.remove('effect-active'), 1000);
+
+    // 背景のフラッシュエフェクト
+    document.body.classList.add('effect-active');
+    setTimeout(() => document.body.classList.remove('effect-active'), 500);
+
+    // パーティクルエフェクトを生成（ランダムな位置から）
+    createParticles();
+
+    // アナログ時計の中心点にエフェクト
+    if (isAnalogMode) {
+        const centerDot = document.querySelector('.center-dot');
+        centerDot.classList.add('tick');
+        setTimeout(() => centerDot.classList.remove('tick'), 600);
+    }
+};
+
+// パーティクルを生成
+const createParticles = () => {
+    const particleCount = 12;
+    const colors = ['#ff6b6b', '#ffa500', '#ffd700', '#90ee90', '#4facfe', '#9370db', '#ff69b4'];
+
+    // 時計の中心座標を取得
+    const clockWrapper = document.querySelector('.clock-wrapper');
+    const rect = clockWrapper.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+
+        // ランダムな色
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        particle.style.backgroundColor = color;
+        particle.style.boxShadow = `0 0 10px ${color}`;
+
+        // 中心から放射状に飛び散る
+        const angle = (i / particleCount) * Math.PI * 2;
+        const distance = 100 + Math.random() * 100;
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+
+        particle.style.left = centerX + 'px';
+        particle.style.top = centerY + 'px';
+        particle.style.setProperty('--tx', tx + 'px');
+        particle.style.setProperty('--ty', ty + 'px');
+
+        document.body.appendChild(particle);
+
+        // アニメーション終了後に削除
+        setTimeout(() => particle.remove(), 1000);
+    }
+};
 
 // デジタル時計の更新
 const updateDigitalClock = () => {
@@ -40,6 +107,7 @@ const updateDigitalClock = () => {
     const hours = formatNumber(now.getHours());
     const minutes = formatNumber(now.getMinutes());
     const seconds = formatNumber(now.getSeconds());
+    const secondsNum = now.getSeconds();
 
     timeElement.textContent = `${hours}:${minutes}:${seconds}`;
 
@@ -49,6 +117,12 @@ const updateDigitalClock = () => {
 
     dateElement.textContent = `${year}年${month}月${date}日`;
     dayElement.textContent = days[now.getDay()];
+
+    // 秒が変わったら派手なエフェクトを発動
+    if (secondsNum !== lastSecond) {
+        lastSecond = secondsNum;
+        triggerEffect();
+    }
 };
 
 // アナログ時計の更新
@@ -71,6 +145,12 @@ const updateAnalogClock = () => {
     // 時針（スムーズな動き）
     const hourDegrees = ((hours % 12 + minutes / 60) / 12) * 360;
     hourHand.style.transform = `rotate(${hourDegrees}deg)`;
+
+    // 秒が変わったら派手なエフェクトを発動
+    if (seconds !== lastSecond) {
+        lastSecond = seconds;
+        triggerEffect();
+    }
 };
 
 // 時計の初期化と更新
